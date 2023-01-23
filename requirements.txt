@@ -5,4 +5,5 @@ prettytable
 jupyter 
 tqdm
 torchinfo
+scipy
 
