@@ -4,5 +4,5 @@ opencv-python
 prettytable
 jupyter 
 tqdm
-torchsummary
+torchinfo
 
