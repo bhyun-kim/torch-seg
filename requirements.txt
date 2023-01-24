@@ -6,4 +6,5 @@ jupyter
 tqdm
 torchinfo
 scipy
+matplotlib
 
