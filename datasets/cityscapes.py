@@ -4,7 +4,7 @@ import os.path as osp
 
 from glob import glob 
 from torch.utils.data import Dataset
-from library import DatasetRegistry
+from tools.library import DatasetRegistry
 
 """
 References: 
