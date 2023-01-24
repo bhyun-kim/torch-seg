@@ -1,11 +1,11 @@
 
 from torchvision import datasets 
 
-from library import DatasetRegistry
+from tools.library import DatasetRegistry
 
 
 @DatasetRegistry.register('ImageNet')
-class ImageNet(datasets.ImageNet):
+class ImageNetDataset(datasets.ImageNet):
 
     def __getitem__(self, index: int):
         """
