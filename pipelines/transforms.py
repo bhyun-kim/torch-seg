@@ -5,7 +5,7 @@ import torch
 
 import numpy as np 
 
-from library import PipelineRegistry
+from tools.library import PipelineRegistry
 
 """
 References: 
@@ -31,19 +31,35 @@ class Rescale(object):
         if isinstance(output_size, tuple):
             assert len(output_size) == 2
         self.output_size = output_size
+        self.target_keys = ['image', 'segmap']
 
 
     def __call__(self, sample):
         """
         Args:
-            sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
+            sample (dict) 
         
         Returns:
-            sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
+            sample (dict)
         """
-        image, segmap = sample['image'], sample['segmap']
 
-        h, w = image.shape[:2]
+        for k in sample.keys():
+
+            if k in self.target_keys:
+                sample[k] = self._rescale(sample[k])
+
+        return sample
+
+    def _rescale(self, array):
+        """
+        Args:
+            array (np.ndarray): image or label array
+
+        Returns: 
+            array (np.ndarray): rescaled image or label array
+
+        """
+        h, w = array.shape[:2]
         if isinstance(self.output_size, int):
             if h > w:
                 new_h, new_w = self.output_size * h / w, self.output_size
@@ -54,11 +70,7 @@ class Rescale(object):
 
         new_h, new_w = int(new_h), int(new_w)
 
-        img = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-        segmap = cv2.resize(segmap, (new_w, new_h),  interpolation = cv2.INTER_NEAREST)
-
-        return {'image': img, 'segmap': segmap}
-
+        return cv2.resize(array, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
 @PipelineRegistry.register('Dilate')
 class Dilate(object): 
@@ -80,10 +92,10 @@ class Dilate(object):
         if isinstance(kernel_size, tuple):
             assert len(kernel_size) == 2
 
-
         self.target_class = target_class
         self.kernel_size = kernel_size
         self.iteration = iteration
+        self.target_keys = ['segmap']
 
 
     def __call__(self, sample):
@@ -95,7 +107,19 @@ class Dilate(object):
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
         """
 
-        image, segmap = sample['image'], sample['segmap']
+        for k in sample.keys():
+
+            if k in self.target_keys:
+                sample[k] = self._dilate(sample[k])
+
+    def _dilate(self, segmap):
+        """
+        Args:
+            segmap (np.arr, (H x W, uint8)): Segmentation map
+
+        Returns:
+            segmap (np.arr, (H x W, uint8)): Segmentation map
+        """
 
         segmap_dilate = segmap == self.target_class 
 
@@ -105,12 +129,11 @@ class Dilate(object):
         elif isinstance(self.kernel_size, int):
             kernel = np.ones((self.kernel_size, self.kernel_size), np.uint8)
 
-
         segmap_dilate = cv2.dilate(segmap_dilate, kernel, iteration=self.iteration)
 
         segmap[segmap_dilate] = self.target_class
 
-        return {'image': image, 'segmap': segmap}
+        return segmap
 
 
 @PipelineRegistry.register('RandomRescale')
@@ -159,20 +182,45 @@ class Pad(object):
             self.pad_size = pad_size
 
         self.ignore_label = ignore_label
+        self.target_keys = ['image', 'segmap']
 
     def __call__(self, sample):
         """
-        top: It is the border width in number of pixels in top direction. 
-        bottom: It is the border width in number of pixels in bottom direction. 
-        left: It is the border width in number of pixels in left direction. 
-        right: It is the border width in number of pixels in right direction. 
         Args:
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
         
         Returns:
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
+
+        top: It is the border width in number of pixels in top direction. 
+        bottom: It is the border width in number of pixels in bottom direction. 
+        left: It is the border width in number of pixels in left direction. 
+        right: It is the border width in number of pixels in right direction. 
         """
-        image, segmap = sample['image'], sample['segmap']
+
+        for k in sample.keys():
+
+            if k in self.target_keys:
+
+                if k == 'image':
+                    pad_values = (0, 0, 0)
+                elif k == 'segmap':
+                    pad_values = (self.ignore_label, )
+
+                sample[k] = self._pad(sample[k], pad_values)
+
+        return sample
+
+
+    def _pad(self, array, pad_values):
+        """
+        Args: 
+            array (np.arr): Array to be padded.
+        
+        Returns:
+            array (np.arr): Padded array.
+
+        """
 
         if len(self.pad_size) == 1: 
             pad_t, pad_b, pad_l, pad_r = (self.pad_size, )*4 
@@ -182,15 +230,61 @@ class Pad(object):
         elif len(self.pad_size) == 4: 
             pad_t, pad_b, pad_l, pad_r = self.pad_size
 
-        image = cv2.copyMakeBorder(
-            image, pad_t, pad_b, pad_l, pad_r, 
-            cv2.BORDER_CONSTANT, value=(0.0, 0.0, 0.0)
+        return cv2.copyMakeBorder(
+            array, pad_t, pad_b, pad_l, pad_r, 
+            cv2.BORDER_CONSTANT, value=pad_values
             )
-        segmap = cv2.copyMakeBorder(
-            segmap, pad_t, pad_b, pad_l, pad_r, 
-            cv2.BORDER_CONSTANT, value=(self.ignore_label,))
 
-        return {'image': image, 'segmap': segmap}
+
+@PipelineRegistry.register('Crop')
+class Crop(object):
+    """
+    Crop image.
+    """
+
+    def __init__(self, top, left, height, width):
+        """
+        Args: 
+            top (int): Top coordinate.
+            left (int): Left coordinate.
+            height (int): Height of the crop.
+            width (int): Width of the crop.
+        """
+        assert isinstance(top, int)
+        assert isinstance(left, int)
+        assert isinstance(height, int)
+        assert isinstance(width, int)
+
+        self.top = top
+        self.left = left
+        self.height = height
+        self.width = width
+
+        self.target_keys = ['image', 'segmap']
+
+
+    def __call__(self, sample):
+
+        for k in sample.keys():
+
+            if k in self.target_keys:
+
+                sample[k] = self._crop(sample[k])
+
+        return sample
+
+    def _crop(self, array):
+        """
+        Args: 
+            array (np.arr): Array to be cropped.
+        
+        Returns:
+            array (np.arr): Cropped array.
+
+        """
+
+        return array[self.top:self.top+self.height, self.left:self.left+self.width]
+
 
 
 @PipelineRegistry.register('RandomCrop')
@@ -212,6 +306,7 @@ class RandomCrop(object):
             self.output_size = output_size
         self.cat_max_ratio = cat_max_ratio
         self.ignore_idx = ignore_idx
+        self.target_keys = ['image', 'segmap']
 
     def __call__(self, sample):
         """
@@ -221,15 +316,15 @@ class RandomCrop(object):
         Returns:
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
         """
-        image, segmap = sample['image'], sample['segmap']
+
+        image = sample['image']
 
         h, w = image.shape[:2]
         new_h, new_w = self.output_size
 
         h_margin, w_margin = h - new_h, w - new_w
         pad_h, pad_w = -h_margin, -w_margin
-    
-        
+
         if (pad_h >= 0) or (pad_w >= 0): 
             
             pad_h = int(np.ceil(max(pad_h + 1, 0)/2))
@@ -238,32 +333,35 @@ class RandomCrop(object):
             pad = Pad((pad_h, pad_w))
             sample = pad(sample)
 
-            image, segmap = sample['image'], sample['segmap']
+            image = sample['image']
 
             h, w = image.shape[:2]
             new_h, new_w = self.output_size
 
             h_margin, w_margin = h - new_h, w - new_w
 
-
         for i in range(10):
-            
+
             top = np.random.randint(0, h_margin)
             left = np.random.randint(0, w_margin)
 
-            crop_image = image[top: top + new_h,
-                        left: left + new_w]
+            crop = Crop(top, left, new_h, new_w)
+            sample = crop(sample)
 
-            crop_segmap = segmap[top: top + new_h,
-                            left: left + new_w]
+            # check sample has a key 'segmap'
 
-            uniques, cnt = np.unique(crop_segmap, return_counts=True)
-            cnt = cnt[uniques != self.ignore_idx]
 
-            if len(cnt) > 1 and np.max(cnt) / np.sum(cnt) < self.cat_max_ratio:
+            if 'segmap' in sample.keys(): 
+
+                uniques, cnt = np.unique(sample['segmap'], return_counts=True)
+                cnt = cnt[uniques != self.ignore_idx]
+
+                if len(cnt) > 1 and np.max(cnt) / np.sum(cnt) < self.cat_max_ratio:
+                    break
+            else: 
                 break
-        
-        return {'image': crop_image, 'segmap': crop_segmap}
+
+        return sample
 
 
 @PipelineRegistry.register('RandomFlipLR')
@@ -280,6 +378,8 @@ class RandomFlipLR(object):
         self.prob = prob
         assert prob >=0 and prob <= 1
 
+        self.target_keys = ['image', 'segmap']
+
     def __call__(self, sample):
         """
         Args:
@@ -288,15 +388,16 @@ class RandomFlipLR(object):
         Returns:
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
         """
-        image, segmap = sample['image'], sample['segmap']
 
         if np.random.rand() < self.prob:
-            # flip image
-            image = cv2.flip(image, 1)
-            # flip segmap
-            segmap = cv2.flip(segmap, 1)
+        
+            for k in sample.keys():
 
-        return {'image': image, 'segmap': segmap}
+                if k in self.target_keys:
+                    sample[k] = cv2.flip(sample[k], 1)
+
+        return sample
+
 
 
 @PipelineRegistry.register('RandomFlipUD')
@@ -312,6 +413,7 @@ class RandomFlipUD(object):
         """
         self.prob = prob
         assert prob >=0 and prob <= 1
+        self.target_keys = ['image', 'segmap']
 
     def __call__(self, sample):
         """
@@ -321,15 +423,15 @@ class RandomFlipUD(object):
         Returns:
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
         """
-        image, segmap = sample['image'], sample['segmap']
 
         if np.random.rand() < self.prob:
-            # flip image
-            image = cv2.flip(image, 0)
-            # flip segmap
-            segmap = cv2.flip(segmap, 0)
+        
+            for k in sample.keys():
 
-        return {'image': image, 'segmap': segmap}
+                if k in self.target_keys:
+                    sample[k] = cv2.flip(sample[k], 0)
+
+        return sample
 
 @PipelineRegistry.register('Normalization')
 class Normalization(object):
@@ -349,6 +451,8 @@ class Normalization(object):
         mean, std = np.array(mean), np.array(std)
         self.mean = np.float64(mean.reshape(1, -1))
         self.stdinv = 1 / np.float64(std.reshape(1, -1))
+
+        self.target_keys = ['image']
         
 
     def __call__(self, sample):
@@ -359,17 +463,76 @@ class Normalization(object):
         Returns:
             sample (dict, {image: np.arr (H x W x C, float32), segmap: np.arr (H x W, uint8)})
         """
-        image, segmap = sample['image'], sample['segmap']
-        image = np.float32(image) if image.dtype != np.float32 else image.copy()
 
-        cv2.subtract(image, self.mean, image)
-        cv2.multiply(image, self.stdinv, image)
+        for k in sample.keys():
 
-        return {'image': image, 'segmap': segmap}
+            if k in self.target_keys:
+                sample[k] = self._normalize(sample[k])
 
-@PipelineRegistry.register('ToTensor')
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
+        return sample
+
+    def _normalize(self, array):
+
+        array = np.float32(array) if array.dtype != np.float32 else array.copy()
+
+        cv2.subtract(array, self.mean, array)
+        cv2.multiply(array, self.stdinv, array)
+
+        return array
+
+@PipelineRegistry.register('ImgToTensor')
+class ImgToTensor(object):
+    """Convert image arrays in sample to Tensors."""
+
+    def __init__(self):
+
+        self.target_keys = ['image']
+
+    
+    def __call__(self, sample):
+        """
+        Args:
+            sample (dict, {image: np.arr (H x W x C), segmap: np.arr (H x W)})
+        
+        Returns:
+            sample (dict, {image: torch.tensor (C x H x W), segmap: torch.tensor (H x W)})
+        """
+
+        for k in sample.keys():
+
+            if k in self.target_keys:
+                sample[k] = self._to_tensor(sample[k])
+
+        return sample
+
+    def _to_tensor(self, array):
+
+        """
+        Args:
+            array (np.arr, H x W x C)
+
+        Returns:
+            array (torch.tensor, C x H x W)
+        """
+
+        # swap color axis because
+        # numpy image: H x W x C
+        # torch image: C x H x W
+        array = np.float32(array) if array.dtype != np.float32 else array.copy()
+        array = array.transpose((2, 0, 1)) 
+
+        # array to torch.tensor
+        return torch.from_numpy(array)
+ 
+
+@PipelineRegistry.register('SegToTensor')
+class SegToTensor(object):
+    """Convert segmenatation map in sample to Tensors."""
+
+
+    def __init__(self):
+
+        self.target_keys = ['segmap']
 
     def __call__(self, sample):
         """
@@ -379,14 +542,26 @@ class ToTensor(object):
         Returns:
             sample (dict, {image: torch.tensor (C x H x W), segmap: torch.tensor (H x W)})
         """
-        image, segmap = sample['image'], sample['segmap']
+            
+        for k in sample.keys():
 
-        # swap color axis because
-        # numpy image: H x W x C
-        # torch image: C x H x W
-        image = np.float32(image) if image.dtype != np.float32 else image.copy()
-        segmap = np.int64(segmap) if segmap.dtype != np.int64 else segmap.copy()
-        
-        image = image.transpose((2, 0, 1))
-        return {'image': torch.from_numpy(image),
-                'segmap': torch.from_numpy(segmap)}
+            if k in self.target_keys:
+                sample[k] = self._to_tensor(sample[k])
+
+        return sample
+
+
+    def _to_tensor(self, array):            
+        """
+        Args:
+            array (np.arr, H x W)
+
+        Returns:
+            array (torch.tensor, H x W)
+        """
+
+        array = np.int64(array) if array.dtype != np.int64 else array.copy()
+
+        return torch.from_numpy(array)
+
+
