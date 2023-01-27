@@ -4,7 +4,7 @@ import os.path as osp
 
 from glob import glob 
 from torch.utils.data import Dataset
-from library import DatasetRegistry
+from tools.library import DatasetRegistry
 
 """
 References: 
@@ -20,25 +20,27 @@ class CityscapesDataset(Dataset):
         self, root_dir, split='train', transforms=None, classes=None, palette=None, 
         img_suffix = '_leftImg8bit.png', seg_suffix = '_gtFine_labelTrainIds.png'):
         """
-        Args: 
+        Initializes the CityscapesDataset class.
+
+        Args:
             root_dir (str): Directory with all the images.
             split (str): The dataset split, supports 'train', 'val', or 'test'
-            classes (tuple)
-            palette (list)
-            img_suffix (str)
-            seg_suffix (str) 
+            transforms (callable): A function/transform that takes in a sample and returns a transformed version
+            classes (tuple): List of class names, defaults to the original Cityscapes classes
+            palette (list): List of RGB color values for each class, defaults to the original Cityscapes palette
+            img_suffix (str): suffix of the image file
+            seg_suffix (str): suffix of the segmentation file
 
         Folder structure:
-            root_dir 
-                └leftImg8bit
-                    └ train/val/test
-                        └ cities 
-                            └ ***_leftImg8bit.png
-                └gtFine
-                    └ train/val/test
-                        └ cities
-                            └ ***_gtFine_labelTrainIds.png
-                
+                root_dir
+                    └leftImg8bit
+                        └ train/val/test
+                            └ cities
+                                └ ***_leftImg8bit.png
+                    └gtFine
+                        └ train/val/test
+                            └ cities
+                                └ ***_gtFine_labelTrainIds.png
         """
 
         
@@ -71,11 +73,14 @@ class CityscapesDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        Args: 
+        Gets the data sample at the specified index.
+
+        Args:
             idx (int): data index
 
         Returns:
-            sample (dict, {'image': np.arr, 'segmap': np.arr})
+            sample (dict, {'image': np.arr, 'segmap': np.arr}): A dictionary containing the image and segmentation map of the sample.
+                The image is in the format of a numpy array and the segmentation map is in the format of a numpy array.
         """
 
         img_path = self.img_list[idx]
@@ -88,7 +93,7 @@ class CityscapesDataset(Dataset):
 
         sample = {'image': img, 'segmap': segmap} 
 
-        if self.transforms:
+        if self.transforms is not None:
             sample = self.transforms(sample)
 
         return sample

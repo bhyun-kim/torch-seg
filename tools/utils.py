@@ -5,6 +5,9 @@ import os
 import sys 
 import logging
 
+import cv2 
+import PIL.Image as Image
+
 
 import os.path as osp
 
@@ -107,3 +110,22 @@ class Logger(object):
         return None
 
 
+def imread(path, engine='cv2'):
+    """
+    Args:
+        path (str): path to image file
+        engine (str): module to read image file
+    
+    Returns: 
+        image (np.ndarray): image array
+    """
+    
+    if engine == 'cv2':
+        image = cv2.imread(path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    elif engine == 'PIL':
+        image = Image.open(path)
+    else:
+        raise NotImplementedError
+
+    return image
