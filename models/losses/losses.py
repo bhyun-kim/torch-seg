@@ -1,10 +1,7 @@
-
-
-
 import torch
 import torch.nn as nn
 
-from library import LossRegistry
+from tools.library import LossRegistry
 
 
 @LossRegistry.register('CrossEntropyLoss')

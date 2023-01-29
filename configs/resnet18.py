@@ -1,56 +1,49 @@
-ROOT_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+ROOT_DIR = '//172.16.96.147/UOS-SSaS Dropbox/05. Data/00. Benchmarks/04. ImageNet2012/'
 
 LOSS = dict(
     type='CrossEntropyLoss',
-    weight=[
-            2.5959933, 6.7415504, 3.5354059, 9.8663225, 9.690899, 9.369352,
-            10.289121, 9.953208, 4.3097677, 9.490387, 7.674431, 9.396905,
-            10.347791, 6.3927646, 10.226669, 10.241062, 10.280587,
-            10.396974, 10.055647
-            ]  
+    ignore_idx=None,
 ) 
 
 MODEL = dict(
-    encoder = dict(type='CGNet'),
+    encoder = dict(type='resnet18'),
     decoder = None,
     head = dict(
-        type='Interpolate', 
-        loss=LOSS,
-        scale_factor=8,
-        mode='bilinear'
+        type='Classify', 
+        loss=LOSS
     )
 )
 
-CROP_SIZE = (512, 1024)
-BATCH_SIZE = 8
-MEAN = [72.39239876, 82.90891754, 73.15835921]
+CROP_SIZE = (224, 224)
+BATCH_SIZE = 128
+MEAN = [123.675, 116.28, 103.53]
 
-STD = [1, 1, 1]
+STD = [58.395, 57.12, 57.375]
 
 TRAIN_PIPELINES =[
-    dict(type='RandomRescale', output_range=(512, 2048)),
+    dict(type='RandomRescale', output_range=(192, 256)),
     dict(type='RandomCrop', output_size=CROP_SIZE),
     dict(type='RandomFlipLR'),
     dict(type='Normalization', mean=MEAN, std=STD),
-    dict(type='ToTensor')
+    dict(type='ImgToTensor')
 ]
 
 VAL_PIPELINES = [
     dict(type='Rescale', output_size=CROP_SIZE),
     dict(type='Normalization', mean=MEAN, std=STD),
-    dict(type='ToTensor')
+    dict(type='ImgToTensor')
 ]
 
 TEST_PIPELINES = [
     dict(type='Rescale', output_size=CROP_SIZE),
     dict(type='Normalization', mean=MEAN, std=STD),
-    dict(type='ToTensor')
+    dict(type='ImgToTensor')
 ]
 
 DATA_LOADERS = dict(
     train=dict(
         dataset=dict(
-            type='CityscapesDataset', 
+            type='ImageNet', 
             root=ROOT_DIR,
             split='train'), 
         pipelines=TRAIN_PIPELINES,
@@ -61,7 +54,7 @@ DATA_LOADERS = dict(
     ),
     val = dict(
         dataset=dict(
-            type='CityscapesDataset', 
+            type='ImageNet', 
             root=ROOT_DIR,
             split='val'), 
         pipelines=VAL_PIPELINES,
@@ -72,7 +65,7 @@ DATA_LOADERS = dict(
     ),
     test=dict(
         dataset=dict(
-            type='CityscapesDataset', 
+            type='ImageNet', 
             root=ROOT_DIR,
             split='test'), 
         pipelines=TEST_PIPELINES,
@@ -82,11 +75,6 @@ DATA_LOADERS = dict(
         )
     )
 )
-PALETTE = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156],
-                [190, 153, 153], [153, 153, 153], [250, 170, 30], [220, 220, 0],
-                [107, 142, 35], [152, 251, 152], [70, 130, 180], [220, 20, 60],
-                [255, 0, 0], [0, 0, 142], [0, 0, 70], [0, 60, 100],
-                [0, 80, 100], [0, 0, 230], [119, 11, 32]]
 
 ITERATION = 60000
 LR_CONFIG = dict(type='PolynomialLR', total_iters=ITERATION, power=0.9)
@@ -99,4 +87,4 @@ EVALUATION = dict(interval=4000, metric='mIoU')
 CHECKPOINT = dict(interval=4000 )
 LOGGER = dict(interval=50)
 GPUS = 4
-WORK_DIR = '/home/sss/#temp/#cgent_test'
+WORK_DIR = 'D:/work_dir/resnet18_imagenet'
