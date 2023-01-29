@@ -46,9 +46,9 @@ def build_dataset(cfg, transform=None):
         dataset (torch.utils.data.Dataset)
     """
     if cfg['type'] == 'ConcatDataset': 
-        dataset = _concat_dataset(cfg, transforms=transform)
+        dataset = _concat_dataset(cfg, transform=transform)
     else:  
-        dataset = _build_dataset(cfg, transforms=transform)
+        dataset = _build_dataset(cfg, transform=transform)
     return dataset
 
 def _concat_dataset(cfg, transform=None):
@@ -77,7 +77,7 @@ def _build_dataset(cfg, transform=None):
         dataset (torch.utils.data.Dataset)
     """
     dataset_type = cfg.pop('type')
-    cfg['transforms'] = transform
+    cfg['transform'] = transform
     return DatasetRegistry.lookup(dataset_type)(**cfg)
 
 

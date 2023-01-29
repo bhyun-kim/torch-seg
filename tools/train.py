@@ -9,7 +9,7 @@ import torch.nn as nn
 import os.path as osp
 
 from datetime import datetime
-from torchsummary import summary
+from torchinfo import summary
 from importlib import import_module
 from utils import cvt_cfgPathToDict, Logger
 
