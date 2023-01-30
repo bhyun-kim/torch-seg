@@ -1,4 +1,4 @@
-from .registry import Registry
+from tools.registry import Registry
 
 DatasetRegistry = Registry()
 PipelineRegistry = Registry()

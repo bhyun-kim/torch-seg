@@ -88,7 +88,7 @@ class Logger(object):
             formatter = logging.Formatter('%(asctime)s - %(message)s')
             os.makedirs(directory, exist_ok=True)
             
-            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
             log_file = directory + f'/{current_time}.log'
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(logging.INFO)

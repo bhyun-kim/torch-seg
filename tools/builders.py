@@ -7,11 +7,9 @@ import datasets
 from models import encoders, losses, heads, optims, lr_schedulers, wrappers
 import runners
 
-
-
-from library import DatasetRegistry, PipelineRegistry, LossRegistry
-from library import EncoderRegistry, DecoderRegistry, HeadRegistry
-from library import OptimRegistry, SchedulerRegistry, RunnerRegistry
+from tools.library import DatasetRegistry, PipelineRegistry, LossRegistry
+from tools.library import EncoderRegistry, DecoderRegistry, HeadRegistry
+from tools.library import OptimRegistry, SchedulerRegistry, RunnerRegistry
 
 from models.frames.frames import ModelFramer
 
@@ -23,7 +21,7 @@ def build_pipelines(cfg_pipelines):
         cfg_pipelines (list): sequence of pipeline configurations
 
     Returns:
-        transforms (torchvision.transforms.Compose)
+        transform (torchvision.transforms.Compose)
     
     """
 
@@ -38,26 +36,26 @@ def build_pipelines(cfg_pipelines):
 
 
 
-def build_dataset(cfg, transforms=None):
+def build_dataset(cfg, transform=None):
     """Build dataset from config 
     Args: 
         cfg (dict): dataset configuration 
-        transforms (torchvision.transforms)
+        transform (torchvision.transforms)
 
     Returns: 
         dataset (torch.utils.data.Dataset)
     """
     if cfg['type'] == 'ConcatDataset': 
-        dataset = _concat_dataset(cfg, transforms=transforms)
+        dataset = _concat_dataset(cfg, transform=transform)
     else:  
-        dataset = _build_dataset(cfg, transforms=transforms)
+        dataset = _build_dataset(cfg, transform=transform)
     return dataset
 
-def _concat_dataset(cfg, transforms=None):
+def _concat_dataset(cfg, transform=None):
     """Concat datasets in cfg 
     Args: 
         cfg (dict): dataset configuration 
-        transforms (torchvision.transforms)
+        transform (torchvision.transforms)
 
     Returns: 
         dataset (torch.utils.data.ConcatDataset)
@@ -66,11 +64,11 @@ def _concat_dataset(cfg, transforms=None):
     datasets = []
 
     for dataset in cfg['datasets']:
-        datasets.append(_build_dataset(dataset, transforms=transforms))
+        datasets.append(_build_dataset(dataset, transform=transform))
 
     return torch.utils.data.ConcatDataset(datasets)
 
-def _build_dataset(cfg, transforms=None):
+def _build_dataset(cfg, transform=None):
     """Build dataset from config 
     Args: 
         cfg (dict): dataset configuration 
@@ -79,7 +77,7 @@ def _build_dataset(cfg, transforms=None):
         dataset (torch.utils.data.Dataset)
     """
     dataset_type = cfg.pop('type')
-    cfg['transforms'] = transforms
+    cfg['transform'] = transform
     return DatasetRegistry.lookup(dataset_type)(**cfg)
 
 
@@ -177,10 +175,10 @@ def build_loaders(cfg, rank, num_replicas=0):
         _cfg = cfg[split]
         
         # build pipelines 
-        transforms = build_pipelines(_cfg['pipelines'])
+        transform = build_pipelines(_cfg['pipelines'])
 
         # build dataset 
-        dataset = build_dataset(_cfg['dataset'], transforms=transforms)
+        dataset = build_dataset(_cfg['dataset'], transform=transform)
 
         if num_replicas > 0 : 
             sampler = torch.utils.data.distributed.DistributedSampler(

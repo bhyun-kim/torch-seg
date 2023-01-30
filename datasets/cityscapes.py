@@ -17,7 +17,7 @@ class CityscapesDataset(Dataset):
     """Cityscapes dataset."""
 
     def __init__(
-        self, root_dir, split='train', transforms=None, classes=None, palette=None, 
+        self, root, split='train', transform=None, classes=None, palette=None, 
         img_suffix = '_leftImg8bit.png', seg_suffix = '_gtFine_labelTrainIds.png'):
         """
         Initializes the CityscapesDataset class.
@@ -44,11 +44,11 @@ class CityscapesDataset(Dataset):
         """
 
         
-        self.root_dir = root_dir
-        self.transforms = transforms
+        self.root = root
+        self.transform = transform
         self.split = split
 
-        self.img_list = glob(osp.join(self.root_dir, 'leftImg8bit', self.split, '**', f'*{img_suffix}'), recursive=True)
+        self.img_list = glob(osp.join(self.root, 'leftImg8bit', self.split, '**', f'*{img_suffix}'), recursive=True)
         self.seg_suffix = seg_suffix
         if classes == None : 
             self.classes = ('road', 'sidewalk', 'building', 'wall', 'fence', 'pole',
@@ -93,7 +93,7 @@ class CityscapesDataset(Dataset):
 
         sample = {'image': img, 'segmap': segmap} 
 
-        if self.transforms is not None:
-            sample = self.transforms(sample)
+        if self.transform is not None:
+            sample = self.transform(sample)
 
         return sample
