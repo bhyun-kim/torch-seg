@@ -51,15 +51,32 @@ class BasicBlock(nn.Module):
         self.act1 = nn.ReLU(inplace=True)
 
         if increase_dim:
-            self.increase_dim = nn.Sequential(
-                nn.Conv2d(
-                    in_channel, 
-                    out_channel, 
-                    kernel_size=1, 
-                    bias=bias
-                    ),
-                nn.BatchNorm2d(out_channel)
-                )
+            
+            if downsample: 
+                self.increase_dim = nn.Sequential(
+                    nn.Conv2d(
+                        in_channel, 
+                        out_channel, 
+                        kernel_size=1, 
+                        stride=stride,
+                        bias=bias,
+                        ),
+                    nn.BatchNorm2d(out_channel)
+                    )
+                
+            else: 
+                self.increase_dim = nn.Sequential(
+                    nn.Conv2d(
+                        in_channel, 
+                        out_channel, 
+                        kernel_size=1, 
+                        bias=bias
+                        ),
+                    nn.BatchNorm2d(out_channel)
+                    )
+                
+        else: 
+            self.increase_dim = None
 
     def forward(self, x):
         """
@@ -77,12 +94,14 @@ class BasicBlock(nn.Module):
         out = self.norm0(out)
         out = self.act0(out)
 
-        out = self.conv1(x)
+        out = self.conv1(out)
         out = self.norm1(out)
 
         if self.increase_dim is not None:
             identity = self.increase_dim(x)  
 
+        print(out.shape)
+        print(identity.shape)
         out += identity
         out = self.act1(out)
 
@@ -115,7 +134,6 @@ class Bottleneck(nn.Module):
         else:
             stride = 1
 
-
         self.conv0 = nn.Conv2d(
             in_channel, 
             out_channel // expansion_rate, 
@@ -146,15 +164,33 @@ class Bottleneck(nn.Module):
         self.act2 = nn.ReLU(inplace=True)
 
         if increase_dim:
-            self.increase_dim = nn.Sequential(
-                nn.Conv2d(
-                    in_channel, 
-                    out_channel, 
-                    kernel_size=1, 
-                    bias=bias
-                    ),
-                nn.BatchNorm2d(out_channel)
-                )
+            
+            if downsample: 
+                self.increase_dim = nn.Sequential(
+                    nn.Conv2d(
+                        in_channel, 
+                        out_channel, 
+                        kernel_size=1, 
+                        stride=stride,
+                        bias=bias,
+                        # padding=1
+                        ),
+                    nn.BatchNorm2d(out_channel)
+                    )
+                
+            else: 
+                self.increase_dim = nn.Sequential(
+                    nn.Conv2d(
+                        in_channel, 
+                        out_channel, 
+                        kernel_size=1, 
+                        bias=bias
+                        ),
+                    nn.BatchNorm2d(out_channel)
+                    )
+
+        else: 
+            self.increase_dim = None
 
     def forward(self, x):
         """
@@ -187,7 +223,7 @@ class Bottleneck(nn.Module):
         return out
 
 
-@EncoderRegistry.register(name="resnet")
+@EncoderRegistry.register("resnet")
 class ResNet(nn.Module):
     """
     ResNet model
@@ -211,25 +247,32 @@ class ResNet(nn.Module):
 
         self.conv0 = nn.Conv2d(
             3,
-            channels[0],
+            64,
             kernel_size=7,
             stride=2,
             padding=3,
             bias=False
             )
 
-        self.norm0 = nn.BatchNorm2d(channels[0])
+        self.norm0 = nn.BatchNorm2d(64)
         self.act0 = nn.ReLU(inplace=True)
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
+        if block == BasicBlock:
+            increase_conv2 = False
+
+        elif block == Bottleneck:
+            increase_conv2 = True
+
+
         self.stage1 = self._make_stage(
             block=block,
-            in_channel=channels[0],
+            in_channel=64,
             out_channel=channels[0],
             num_layers=layers[0],
             downsample=False,
-            increase_dim=False
+            increase_dim=increase_conv2
             )
 
         
@@ -328,7 +371,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-@EncoderRegistry.register(name="resnet18")
+@EncoderRegistry.register("resnet18")
 class ResNet18(ResNet):
     """
     ResNet-18 model
@@ -341,7 +384,7 @@ class ResNet18(ResNet):
             channels=[64, 128, 256, 512]
             )
 
-@EncoderRegistry.register(name="resnet34")
+@EncoderRegistry.register("resnet34")
 class ResNet34(ResNet):
     """
     ResNet-34 model
@@ -354,7 +397,7 @@ class ResNet34(ResNet):
             channels=[64, 128, 256, 512]
             )
 
-@EncoderRegistry.register(name="resnet50")
+@EncoderRegistry.register("resnet50")
 class ResNet50(ResNet):
     """
     ResNet-50 model
@@ -364,10 +407,10 @@ class ResNet50(ResNet):
         super(ResNet50, self).__init__(
             block=Bottleneck,
             layers=[3, 4, 6, 3],
-            channels=[64, 128, 256, 512]
+            channels=[256, 512, 1024, 2048]
             )
 
-@EncoderRegistry.register(name="resnet101")
+@EncoderRegistry.register("resnet101")
 class ResNet101(ResNet):
     """
     ResNet-101 model
@@ -377,10 +420,10 @@ class ResNet101(ResNet):
         super(ResNet101, self).__init__(
             block=Bottleneck,
             layers=[3, 4, 23, 3],
-            channels=[64, 128, 256, 512]
+            channels=[256, 512, 1024, 2048]
             )
 
-@EncoderRegistry.register(name="resnet152")
+@EncoderRegistry.register("resnet152")
 class ResNet152(ResNet):
     """
     ResNet-152 model
@@ -390,7 +433,7 @@ class ResNet152(ResNet):
         super(ResNet152, self).__init__(
             block=Bottleneck,
             layers=[3, 8, 36, 3],
-            channels=[64, 128, 256, 512]
+            channels=[256, 512, 1024, 2048]
             )
 
 

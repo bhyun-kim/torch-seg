@@ -100,7 +100,15 @@ def train(rank):
     model.to(device)
 
     if rank == 0: 
-        logger.info(str(summary(model, input_size=(3, cfg['CROP_SIZE'][0], cfg['CROP_SIZE'][1]))))
+        logger.info(
+            str(
+                summary(
+                    model, 
+                    input_size=(1, 3, cfg['CROP_SIZE'][0], cfg['CROP_SIZE'][1]),
+                    depth=4
+                    )
+                )
+            )
 
     if is_dist: 
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model) 

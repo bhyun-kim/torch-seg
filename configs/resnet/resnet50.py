@@ -1,4 +1,4 @@
-ROOT_DIR = '//172.16.96.147/UOS-SSaS Dropbox/05. Data/00. Benchmarks/04. ImageNet2012/'
+ROOT_DIR = 'C:/Users/labeler3/UOS-SSaS Dropbox/05. Data/00. Benchmarks/04. ImageNet2012'
 
 LOSS = dict(
     type='CrossEntropyLoss',
@@ -6,11 +6,13 @@ LOSS = dict(
 ) 
 
 MODEL = dict(
-    encoder = dict(type='resnet18'),
+    encoder = dict(type='resnet50'),
     decoder = None,
     head = dict(
         type='Classify', 
-        loss=LOSS
+        loss=LOSS,
+        num_classes=1000,
+        in_channels=2048,
     )
 )
 
@@ -34,11 +36,6 @@ VAL_PIPELINES = [
     dict(type='ImgToTensor')
 ]
 
-TEST_PIPELINES = [
-    dict(type='Rescale', output_size=CROP_SIZE),
-    dict(type='Normalization', mean=MEAN, std=STD),
-    dict(type='ImgToTensor')
-]
 
 DATA_LOADERS = dict(
     train=dict(
@@ -62,17 +59,6 @@ DATA_LOADERS = dict(
             shuffle=False,
             batch_size=1,
         )
-    ),
-    test=dict(
-        dataset=dict(
-            type='ImageNet', 
-            root=ROOT_DIR,
-            split='test'), 
-        pipelines=TEST_PIPELINES,
-        loader=dict(
-            shuffle=False,
-            batch_size=1,
-        )
     )
 )
 
@@ -83,8 +69,9 @@ RUNNER = dict(
     type='SupervisedLearner', run_by='iteration', 
 )
 
+LOAD_FROM = None
 EVALUATION = dict(interval=4000, metric='mIoU')
 CHECKPOINT = dict(interval=4000 )
 LOGGER = dict(interval=50)
 GPUS = 4
-WORK_DIR = 'D:/work_dir/resnet18_imagenet'
+WORK_DIR = 'C:/Users/labeler3/Desktop/temp'
