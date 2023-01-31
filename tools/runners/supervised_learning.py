@@ -40,11 +40,11 @@ class SupervisedLearner(object):
         checkpoint_interval = cfg['CHECKPOINT']['interval']
 
         best_save_path = osp.join(cfg['WORK_DIR'], "best_checkpoint.pt")
-        graph_path = osp.join(cfg['WORK_DIR'], "runs")
     
+        len_of_loader = len(data_loaders['train'])
 
         if self.run_by == 'epoch':
-            iteration = cfg['EPOCH'] * len(data_loaders['train'])
+            iteration = cfg['EPOCH'] * len_of_loader
             print('iteration: ', iteration)
         elif self.run_by == 'iteration':
             iteration = cfg['ITERATION']
@@ -52,8 +52,10 @@ class SupervisedLearner(object):
             print('supported run by option: epoch, iteration')
        
 
-        train_running_loss = 0.0
-        val_running_loss = 0.0
+        train_running_loss_log = 0.0
+        val_running_loss_log = 0.0
+        train_running_loss_epoch = 0.0
+        val_running_loss_epoch = 0.0
         
         train_generator = iter(data_loaders['train'])
         val_generator = iter(data_loaders['val'])
@@ -77,7 +79,9 @@ class SupervisedLearner(object):
 
             train_loss = model(inputs, labels)
             train_loss.backward()
-            train_running_loss += train_loss.item()
+            train_running_loss_log += train_loss.item()
+            train_running_loss_epoch += train_loss.item()
+
 
             optimizer.step()
             scheduler.step()
@@ -98,23 +102,33 @@ class SupervisedLearner(object):
                 inputs, labels = inputs.to(device), labels.to(device)
 
                 val_loss = model(inputs, labels)
-                val_running_loss += val_loss.item()
+                val_running_loss_log += val_loss.item()
+                val_running_loss_epoch += val_loss.item()
 
 
             if i % logger_interval == logger_interval-1:
-                logger.info(f'[Iteration: {i + 1:5d}] Train Loss: {train_running_loss / logger_interval:.3f}')
-                logger.info(f'[Iteration: {i + 1:5d}] Val Loss: {val_running_loss / logger_interval:.3f}')
+                logger.info(f'[Iteration: {i + 1:5d}] Train Loss: {train_running_loss_log / logger_interval:.3f}')
+                logger.info(f'[Iteration: {i + 1:5d}] Val Loss: {val_running_loss_log / logger_interval:.3f}')
 
-                if self.patience:
-                    self.early_stopping(val_running_loss, model, best_save_path)
+                train_running_loss_log = 0.0
+                val_running_loss_log = 0.0
+
+            
+            if i % len_of_loader == len_of_loader-1:
+                epoch_num = i//len_of_loader + 1
+                logger.info(f'[Epoch: {epoch_num:3d}] Train Loss: {train_running_loss_epoch / len_of_loader:.3f}')
+                logger.info(f'[Epoch: {epoch_num:3d}] Val Loss: {val_running_loss_epoch / len_of_loader:.3f}')
+
+                if self.patience is not None:
+                    self.early_stopping(val_running_loss_epoch/len_of_loader, model, best_save_path)
 
                     if self.early_stop:
                         print("Early stopping")
                         break
 
-                train_running_loss = 0.0
-                val_running_loss = 0.0
-
+                train_running_loss_epoch = 0.0
+                val_running_loss_epoch = 0.0
+                
 
             if is_dist: 
                 rank = model.device_ids[0]
@@ -131,7 +145,7 @@ class SupervisedLearner(object):
                 # torch.distributed.barrier()
             else: 
                 if i % eval_interval == eval_interval-1:
-                    evaluate(model, data_loaders['val'], device, logger)  
+                    evaluate(model, data_loaders['val'], device, logger=logger)  
 
                 if i % checkpoint_interval == checkpoint_interval-1:
                     save_path = osp.join(cfg['WORK_DIR'], f'checkpoint_iter_{i+1}.pth')
@@ -176,5 +190,4 @@ class SupervisedLearner(object):
              logger, 
              data_loaders,): 
 
-        evaluate(model, data_loaders['val'], device, logger)  
-
+        evaluate(model, data_loaders['val'], device, logger=logger) 
