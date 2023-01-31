@@ -1,7 +1,7 @@
 import cv2 
 import numpy as np 
 
-from library import WrapperRegistry
+from tools.library import WrapperRegistry
 
 @WrapperRegistry.register('Erode')
 class Erode(object): 

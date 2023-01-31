@@ -8,7 +8,6 @@ import logging
 import cv2 
 import PIL.Image as Image
 
-
 import os.path as osp
 
 import logging
@@ -68,7 +67,7 @@ def cvt_cfgPathToDict(path):
 
 
 class Logger(object):
-    def __init__(self, directory, verbose=1):
+    def __init__(self, directory, verbose=1, interval=None):
         """
         Args:
             directory (str): path to write logging file 
@@ -79,6 +78,7 @@ class Logger(object):
 
         # build logger  
         self.verbose = verbose
+        self.interval = interval
 
         if self.verbose != -1:
 
@@ -108,6 +108,9 @@ class Logger(object):
             pass
 
         return None
+
+def logical_xor(str1, str2):
+    return bool(str1) ^ bool(str2)
 
 
 def imread(path, engine='cv2'):

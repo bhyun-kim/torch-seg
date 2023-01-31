@@ -1,7 +1,7 @@
 
 import torch.optim as optim
 
-from library import OptimRegistry
+from tools.library import OptimRegistry
 
 
 @OptimRegistry.register('Adam')

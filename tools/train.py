@@ -67,7 +67,11 @@ def train(rank):
     else: 
         verbose = -1
 
-    logger = Logger(cfg['WORK_DIR'], verbose)
+    logger = Logger(
+        cfg['WORK_DIR'],
+        verbose=verbose,
+        interval=cfg['LOGGER']['interval']
+        )
 
     # Print paths 
     pformat_cfg = pformat(cfg, width=75)
@@ -87,7 +91,6 @@ def train(rank):
             if k in pretrained_dict: 
                 if model.state_dict()[k].shape != pretrained_dict[k].shape: 
 
-                    print(k)
                     pretrained_dict.pop(k)
 
         # print(model.state_dict)
@@ -121,14 +124,15 @@ def train(rank):
 
     runner = build_runner(cfg['RUNNER'])
     runner.train(
-        cfg,
         model, 
         device, 
         logger, 
         optimizer, 
         data_loaders,
         scheduler,
-        is_dist=is_dist
+        cfg['EVALUATION'],
+        cfg['CHECKPOINT'],
+        is_dist
     )
 
 

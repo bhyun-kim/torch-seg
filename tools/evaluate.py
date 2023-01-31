@@ -5,7 +5,17 @@ from tqdm import tqdm
 from prettytable import PrettyTable
 
 
-def evaluate(model, dataloader, device, metric='miou',logger=None, ignore_idx=255.):
+def evaluate(
+    model,
+    dataloader, 
+    device, 
+    metric='miou',
+    logger=None, 
+    ignore_idx=255.,
+    img_key = 'image',
+    label_key = 'segmap',
+    interval = None, 
+    ):
     """evaluate dataset
     Args: 
         model (torch.nn.Module)
@@ -17,7 +27,7 @@ def evaluate(model, dataloader, device, metric='miou',logger=None, ignore_idx=25
     
     """
     # no gradients needed
-    supported_metrices = ['miou']
+    supported_metrices = ['miou', 'acc']
     model.eval()
 
     if hasattr(dataloader.dataset, 'datasets'):
@@ -33,18 +43,25 @@ def evaluate(model, dataloader, device, metric='miou',logger=None, ignore_idx=25
         gts = []
         for data in tqdm(dataloader, desc='Evaluation:'):
 
-            inputs, labels = data['image'], data['segmap']
+            inputs, labels = data[img_key], data[label_key]
             inputs, labels = inputs.to(device), labels.to(device)
 
             outputs = model(inputs)
 
-            preds.append(torch.argmax(outputs, dim=1))
-            gts.append(labels)
+            pred = torch.argmax(outputs, dim=1)
 
-        cm = calculate_cm(preds, gts, num_classes, ignore_idx)
+            pred = pred.flatten().detach().cpu().numpy()
+            gt = labels.flatten().detach().cpu().numpy()
 
+            preds += list(pred)
+            gts += list(gt)
+    
         if metric=='miou':
+            cm = calculate_cm(preds, gts, num_classes, ignore_idx)
             calculate_miou(cm, logger=logger, classes=classes) 
+
+        elif metric=='acc':
+            calculate_acc(preds, gts)
         else: 
             print(f'The provided metric {metric} is not supported.')
             print(f'Choose one of {supported_metrices}')
@@ -56,8 +73,8 @@ def evaluate(model, dataloader, device, metric='miou',logger=None, ignore_idx=25
 def calculate_cm(preds, gts, num_classes, ignore_idx):
     """calculate confusion matrix
     Args:
-        preds (list): list of predictions (torch.tensor)
-        gts (list): list of ground truths (torch.tensor)
+        preds (list): list of predictions (np.array)
+        gts (list): list of ground truths (np.array)
         num_classes (int)
         ignore_idx (int)
 
@@ -68,9 +85,6 @@ def calculate_cm(preds, gts, num_classes, ignore_idx):
     category_vectors = []
     for pred, gt in zip(preds, gts):
         
-        pred = pred.flatten().detach().cpu().numpy()
-        gt = gt.flatten().detach().cpu().numpy()
-
         pred = pred[gt != ignore_idx]
         gt = gt[gt != ignore_idx]
         
@@ -122,5 +136,20 @@ def calculate_miou(cm, logger=None, classes=None):
         print('\n'+iou_table.get_string())
         print('\n'+miou_table.get_string())
         
-    return None
+
+
+def calculate_acc(preds, gts, logger=None):
+    
+    pred_arr = np.asarray(preds)
+    gt_arr = np.asarray(gts)        
+
+    num_correct = np.sum(pred_arr == gt_arr)
+    val_acc = num_correct / len(preds)
+
+    eval_result_str = f'Evaluation Acc: {val_acc*100:.3f}'
+    if logger: 
+        logger.info(eval_result_str)
+    else: 
+        print(eval_result_str)
+        
 
