@@ -1,8 +1,8 @@
-ROOT_DIR = 'C:/Users/labeler3/UOS-SSaS Dropbox/05. Data/00. Benchmarks/04. ImageNet2012'
+ROOT_DIR = '/home/user/server/05. Data/00. Benchmarks/04. ImageNet2012'
 
 LOSS = dict(
     type='CrossEntropyLoss',
-    ignore_idx=None,
+    ignore_idx=-1,
 ) 
 
 MODEL = dict(
@@ -17,7 +17,7 @@ MODEL = dict(
 )
 
 CROP_SIZE = (224, 224)
-BATCH_SIZE = 128
+BATCH_SIZE = 512
 MEAN = [123.675, 116.28, 103.53]
 
 STD = [58.395, 57.12, 57.375]
@@ -42,7 +42,8 @@ DATA_LOADERS = dict(
         dataset=dict(
             type='ImageNet', 
             root=ROOT_DIR,
-            split='train'), 
+            split='train'
+            ), 
         pipelines=TRAIN_PIPELINES,
         loader=dict(
             shuffle=False,
@@ -57,21 +58,23 @@ DATA_LOADERS = dict(
         pipelines=VAL_PIPELINES,
         loader=dict(
             shuffle=False,
-            batch_size=1,
+            batch_size=BATCH_SIZE,
         )
     )
 )
 
-ITERATION = 60000
+ITERATION = 300000
 LR_CONFIG = dict(type='PolynomialLR', total_iters=ITERATION, power=0.9)
 OPTIMIZER = dict(type='Adam', lr=0.001, eps=1e-08, weight_decay=0.0005)
 RUNNER = dict(
-    type='SupervisedLearner', run_by='iteration', 
+    type='SupervisedLearner', 
+    run_by='iteration', 
+    iteration=ITERATION,
+    label_key='target'
 )
 
 LOAD_FROM = None
-EVALUATION = dict(interval=4000, metric='mIoU')
-CHECKPOINT = dict(interval=4000 )
-LOGGER = dict(interval=50)
-GPUS = 4
-WORK_DIR = 'C:/Users/labeler3/Desktop/temp'
+EVALUATION = dict(interval=3000, metric='acc', label_key='target')
+LOGGER = dict(interval=1)
+WORK_DIR = '/home/user/#temp/imagenet'
+CHECKPOINT = dict(interval=3000, work_dir=WORK_DIR)

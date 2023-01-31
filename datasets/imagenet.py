@@ -1,11 +1,15 @@
 
+
 from torchvision import datasets 
 
+from tools.utils import imread
 from tools.library import DatasetRegistry
 
 
 @DatasetRegistry.register('ImageNet')
 class ImageNetDataset(datasets.ImageNet):
+    def __init__(self, loader=imread, **kwargs):
+        super().__init__(loader=loader, **kwargs)
 
     def __getitem__(self, index: int):
         """
