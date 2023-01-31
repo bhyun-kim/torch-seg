@@ -60,8 +60,10 @@ class SupervisedLearner(object):
         img_key = self.img_key
         label_key = self.label_key
 
+
     
         if self.run_by == 'epoch':
+
             iteration = self.epochs * len(data_loaders['train'])
             epochs = self.epochs
         elif self.run_by == 'iteration':
@@ -148,11 +150,7 @@ class SupervisedLearner(object):
 
 
 
-
         logger.info('Finished Training')
-
-
-    
 
 
 
@@ -334,4 +332,5 @@ class SupervisedLearner(object):
 #              data_loaders,): 
 
 #         evaluate(model, data_loaders['val'], device, logger)  
+
 
