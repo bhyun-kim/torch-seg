@@ -41,7 +41,14 @@ def evaluate(
     with torch.no_grad():
         preds = []
         gts = []
+        i = 0
+        # iter_dataloader = iter(dataloader)
+        # while i < 5:
+        #     i+= 1
+        #     data = next(iter_dataloader)
+
         for data in tqdm(dataloader, desc='Evaluation:'):
+            # print("you are evaluating")
 
             inputs, labels = data[img_key], data[label_key]
             inputs, labels = inputs.to(device), labels.to(device)

@@ -17,7 +17,7 @@ MODEL = dict(
 )
 
 CROP_SIZE = (224, 224)
-BATCH_SIZE = 512
+BATCH_SIZE = 256
 MEAN = [123.675, 116.28, 103.53]
 
 STD = [58.395, 57.12, 57.375]
@@ -63,7 +63,7 @@ DATA_LOADERS = dict(
     )
 )
 
-ITERATION = 300000
+ITERATION = 75000
 LR_CONFIG = dict(type='PolynomialLR', total_iters=ITERATION, power=0.9)
 OPTIMIZER = dict(type='Adam', lr=0.001, eps=1e-08, weight_decay=0.0005)
 RUNNER = dict(
@@ -74,6 +74,7 @@ RUNNER = dict(
 )
 
 LOAD_FROM = None
+RESUME_FROM = None
 EVALUATION = dict(interval=3000, metric='acc', label_key='target')
 LOGGER = dict(interval=1)
 WORK_DIR = '/home/user/#temp/imagenet'

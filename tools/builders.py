@@ -180,16 +180,23 @@ def build_loaders(cfg, rank, num_replicas=0):
         # build dataset 
         dataset = build_dataset(_cfg['dataset'], transform=transform)
 
-        if num_replicas > 0 : 
-            sampler = torch.utils.data.distributed.DistributedSampler(
-                dataset, num_replicas=num_replicas, rank=rank
-                )
+        if num_replicas > 0 :
+            if split == 'train': 
+                sampler = torch.utils.data.distributed.DistributedSampler(
+                    dataset, num_replicas=num_replicas, rank=rank
+                    )
 
-        else: 
+                loaders[split] = build_data_loader(_cfg['loader'], dataset, sampler) 
+
+            elif split == 'val':
+                if rank == 0:
+                    sampler = None 
+                    loaders[split] = build_data_loader(_cfg['loader'], dataset, sampler) 
+                    
+        else : 
             sampler = None 
-        
-        # build data loader 
-        loaders[split] = build_data_loader(_cfg['loader'], dataset, sampler) 
+            loaders[split] = build_data_loader(_cfg['loader'], dataset, sampler) 
+
 
     return loaders 
 

@@ -11,7 +11,7 @@ import os.path as osp
 from datetime import datetime
 from torchinfo import summary
 from importlib import import_module
-from utils import cvt_cfgPathToDict, Logger
+from utils import cvt_cfgPathToDict, Logger, logical_xor
 
 from builders import build_loaders, build_loss, build_model
 from builders import build_optimizer, build_lr_config, build_runner
@@ -27,7 +27,7 @@ def setup(rank, world_size):
     """
     os.environ['MASTER_ADDR'] = 'localhost' # TODO check what it means...
     os.environ['MASTER_PORT'] = '12355'     # TODO check what it means...
-
+    
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size)
 
 
@@ -83,19 +83,30 @@ def train(rank):
     # build model     
     model = build_model(cfg['MODEL'])    
     
+    start_iter = 1
+    pretrained_dict = None
+
     if cfg['LOAD_FROM'] :
         pretrained_dict = torch.load(cfg['LOAD_FROM'])
+
+    elif cfg['RESUME_FROM']:
+        pretrained_dict = torch.load(cfg['RESUME_FROM'])
+        _, filename = os.path.split(cfg['RESUME_FROM'])
+        start_iter = filename.replace('checkpoint_iter_', '')
+        start_iter = start_iter.replace('.pth', '')
+        start_iter = int(start_iter)
+        logger.info(f'Resume from iteration {start_iter}.')
+
+    if pretrained_dict:
         pretrained_dict = {key.replace("module.", ""): value for key, value in pretrained_dict.items()}
 
         for k in model.state_dict():
             if k in pretrained_dict: 
                 if model.state_dict()[k].shape != pretrained_dict[k].shape: 
-
                     pretrained_dict.pop(k)
 
         # print(model.state_dict)
         model.load_state_dict(pretrained_dict, strict=False)
-        print('Load from config is working!')
 
 
 
@@ -132,7 +143,8 @@ def train(rank):
         scheduler,
         cfg['EVALUATION'],
         cfg['CHECKPOINT'],
-        is_dist
+        is_dist,
+        start_iter = start_iter
     )
 
 
