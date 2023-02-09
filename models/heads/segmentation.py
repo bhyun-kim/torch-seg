@@ -7,6 +7,9 @@ from tools.library import HeadRegistry
 class Interpolate(nn.Module):
     def __init__(self, 
                  loss,
+                 in_channels,
+                 num_classes,
+                 kernel_size=1,
                  size=None,
                  scale_factor=None, 
                  mode='nearest', 
@@ -17,6 +20,7 @@ class Interpolate(nn.Module):
         """
         Args:
             size 
+            num_classes
             scale_factor 
             mode (str) 
             align_corners (bool) 
@@ -25,6 +29,9 @@ class Interpolate(nn.Module):
             
         """
         super().__init__()
+
+        self.conv = nn.Conv2d(
+            in_channels, num_classes, (kernel_size, kernel_size), bias=False)
 
         self.args_interpolate = dict(
             size=size,
@@ -36,9 +43,23 @@ class Interpolate(nn.Module):
         )
         self.criterion = loss
 
+        self.initialize_layers()
+
     def forward(self, input, labels):
         output = self.predict(input)
         return self.criterion(output, labels)
 
     def predict(self, input):
-        return F.interpolate(input=input, **self.args_interpolate)
+        out = self.conv(input)
+        return F.interpolate(input=out, **self.args_interpolate)
+
+
+    def initialize_layers(self):
+        
+        # init weights
+        for m in self.modules():
+            classname = m.__class__.__name__
+            if classname in ['Conv2d', 'Linear']:
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    m.bias.data.zero_()

@@ -273,21 +273,17 @@ class InputInjection(nn.Module):
 @EncoderRegistry.register('CGNet')
 class CGNet(nn.Module):
     def __init__(self, 
-                 classes=19, 
                  channels=(32, 64, 128),
                  blocks=(3, 21),
                  dilations=(2, 4),
                  reductions=(8, 16),
-                 dropout=False
                  ):
         """
         Args:
-          classes (int): number of classes in the dataset. Default is 19 for the cityscapes
           channels (tuple): number of channels in stage 1-3
           blocks (tuple): number of blocks in stage 2-3 
           dilations (tuple): dilation rates of conv layers in stage 2-3 
           reductions (tuple): feature map size reduction of global extractor in stage 1-2
-          dropout (bool): if true, use dropout layer before the last conv layer 
 
         Refs:
             [1] Wu, T., Tang, S., Zhang, R., Cao, J., & Zhang, Y. (2020). 
@@ -353,24 +349,7 @@ class CGNet(nn.Module):
         
         self.bn3 = BNPReLU(channels[1]+channels[1]+channels[2])
 
-        if dropout:
-            self.classifier = nn.Sequential(nn.Dropout2d(0.1, False),Conv(256, classes, 1, 1))
-        else:
-            self.classifier = nn.Sequential(Conv(256, classes, 1, 1))
-
-        #init weights
-        for m in self.modules():
-            classname = m.__class__.__name__
-            if classname in ['Conv2d', 'Linear']:
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    m.bias.data.zero_()
-
-            elif classname in ['BatchNorm2d']:
-                nn.init.constant_(m.weight, val=1)
-
-            elif classname in ['PReLU']:
-                nn.init.constant_(m.weight, val=0)
+        self.initialize_layers()
                 
 
     def forward(self, input):
@@ -416,5 +395,22 @@ class CGNet(nn.Module):
                 output3 = layer(output3)
 
         output3_cat = self.bn3(torch.cat([output3_0, output3], 1))
-        output = self.classifier(output3_cat)
-        return output
+
+        return output3_cat
+
+
+    def initialize_layers(self):
+
+                #init weights
+        for m in self.modules():
+            classname = m.__class__.__name__
+            if classname in ['Conv2d', 'Linear']:
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    m.bias.data.zero_()
+
+            elif classname in ['BatchNorm2d']:
+                nn.init.constant_(m.weight, val=1)
+
+            elif classname in ['PReLU']:
+                nn.init.constant_(m.weight, val=0)
