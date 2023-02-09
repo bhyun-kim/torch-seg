@@ -74,7 +74,7 @@ RUNNER = dict(
 )
 
 LOAD_FROM = None
-RESUME_FROM = None
+RESUME_FROM = '/home/user/#temp/imagenet/checkpoint_iter_5999.pth'
 EVALUATION = dict(interval=3000, metric='acc', label_key='target')
 LOGGER = dict(interval=1)
 WORK_DIR = '/home/user/#temp/imagenet'

@@ -86,10 +86,10 @@ def train(rank):
     start_iter = 1
     pretrained_dict = None
 
-    if cfg['LOAD_FROM'] :
+    if 'LOAD_FROM' in cfg.keys() :
         pretrained_dict = torch.load(cfg['LOAD_FROM'])
 
-    elif cfg['RESUME_FROM']:
+    elif 'RESUME_FROM' in cfg.keys():
         pretrained_dict = torch.load(cfg['RESUME_FROM'])
         _, filename = os.path.split(cfg['RESUME_FROM'])
         start_iter = filename.replace('checkpoint_iter_', '')

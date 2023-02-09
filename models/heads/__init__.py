@@ -1,7 +1,7 @@
-from .segmentation import Interpolate
+from .segmentation import Interpolate, PixelShuffle
 from .classification import Classify
 
 
 __all__ = [
-    'Interpolate', 'Classify'
+    'Interpolate', 'PixelShuffle', 'Classify'
 ]
