@@ -90,8 +90,13 @@ def build_data_loader(cfg, dataset, sampler):
     Returns: 
         data_loader (torch.utils.data.DataLoader)
     """
-    
-    return torch.utils.data.DataLoader(dataset, **cfg, sampler=sampler)
+    data_loader = torch.utils.data.DataLoader(
+        dataset, **cfg, sampler=sampler, collate_fn=collate_fn)
+    return data_loader
+
+def collate_fn(batch):
+    batch = list(filter(lambda x: x is not None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
 
 def build_loss(cfg):
     """Build loss from config 
