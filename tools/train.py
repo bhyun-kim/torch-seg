@@ -19,6 +19,9 @@ from builders import build_optimizer, build_lr_config, build_runner
 from pprint import pformat
 
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+os.environ['TORCH_CPP_SHOW_STACKTRACES'] = "1"
+
 def setup(rank, world_size):
     """Setup training processors 
     Args: 
@@ -86,10 +89,10 @@ def train(rank):
     start_iter = 1
     pretrained_dict = None
 
-    if 'LOAD_FROM' in cfg.keys() :
+    if cfg['LOAD_FROM'] :
         pretrained_dict = torch.load(cfg['LOAD_FROM'])
 
-    elif 'RESUME_FROM' in cfg.keys():
+    elif cfg['RESUME_FROM']:
         pretrained_dict = torch.load(cfg['RESUME_FROM'])
         _, filename = os.path.split(cfg['RESUME_FROM'])
         start_iter = filename.replace('checkpoint_iter_', '')
@@ -111,6 +114,10 @@ def train(rank):
 
 
     device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
+
+    if torch.cuda.is_available():
+        torch.cuda.set_device(rank)
+        
     model.to(device)
 
     if rank == 0: 

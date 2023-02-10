@@ -7,9 +7,10 @@ import numpy as np
 
 from tools.library import PipelineRegistry
 
+from copy import deepcopy
+
 """
 References: 
-
 [1] https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
 [2] https://mmcv-jm.readthedocs.io/en/stable/_modules/mmcv/image/normalize.html
 """
@@ -46,18 +47,22 @@ class Rescale(object):
         for k in sample.keys():
 
             if k in self.target_keys:
-                sample[k] = self._rescale(sample[k])
+                if k == 'image':
+                    sample[k] = self._rescale(sample[k])
+                elif k == 'segmap':
+                    sample[k] = self._rescale(
+                        sample[k],
+                        interpolation=cv2.INTER_NEAREST
+                        )
 
         return sample
 
-    def _rescale(self, array):
+    def _rescale(self, array, interpolation=cv2.INTER_LINEAR):
         """
         Args:
             array (np.ndarray): image or label array
-
         Returns: 
             array (np.ndarray): rescaled image or label array
-
         """
         h, w = array.shape[:2]
         if isinstance(self.output_size, int):
@@ -70,7 +75,7 @@ class Rescale(object):
 
         new_h, new_w = int(new_h), int(new_w)
 
-        return cv2.resize(array, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+        return cv2.resize(array, (new_w, new_h), interpolation=interpolation)
 
 @PipelineRegistry.register('Dilate')
 class Dilate(object): 
@@ -116,7 +121,6 @@ class Dilate(object):
         """
         Args:
             segmap (np.arr, (H x W, uint8)): Segmentation map
-
         Returns:
             segmap (np.arr, (H x W, uint8)): Segmentation map
         """
@@ -161,7 +165,9 @@ class RandomRescale(object):
         """
         output_size = random.randint(self.output_range[0], self.output_range[1])
         rescale = Rescale(output_size)
-        return rescale(sample)
+        sample = rescale(sample)
+
+        return sample 
 
 
 @PipelineRegistry.register('Pad')
@@ -191,7 +197,6 @@ class Pad(object):
         
         Returns:
             sample (dict, {image: np.arr (H x W x C, uint8), segmap: np.arr (H x W, uint8)})
-
         top: It is the border width in number of pixels in top direction. 
         bottom: It is the border width in number of pixels in bottom direction. 
         left: It is the border width in number of pixels in left direction. 
@@ -219,7 +224,6 @@ class Pad(object):
         
         Returns:
             array (np.arr): Padded array.
-
         """
 
         if len(self.pad_size) == 1: 
@@ -280,7 +284,6 @@ class Crop(object):
         
         Returns:
             array (np.arr): Cropped array.
-
         """
 
         return array[self.top:self.top+self.height, self.left:self.left+self.width]
@@ -346,14 +349,13 @@ class RandomCrop(object):
             left = np.random.randint(0, w_margin)
 
             crop = Crop(top, left, new_h, new_w)
-            sample = crop(sample)
+            _sample = deepcopy(sample)
+            _sample = crop(_sample)
 
             # check sample has a key 'segmap'
-
-
             if 'segmap' in sample.keys(): 
 
-                uniques, cnt = np.unique(sample['segmap'], return_counts=True)
+                uniques, cnt = np.unique(_sample['segmap'], return_counts=True)
                 cnt = cnt[uniques != self.ignore_idx]
 
                 if len(cnt) > 1 and np.max(cnt) / np.sum(cnt) < self.cat_max_ratio:
@@ -361,7 +363,7 @@ class RandomCrop(object):
             else: 
                 break
 
-        return sample
+        return _sample
 
 
 @PipelineRegistry.register('RandomFlipLR')
@@ -510,7 +512,6 @@ class ImgToTensor(object):
         """
         Args:
             array (np.arr, H x W x C)
-
         Returns:
             array (torch.tensor, C x H x W)
         """
@@ -555,13 +556,11 @@ class SegToTensor(object):
         """
         Args:
             array (np.arr, H x W)
-
         Returns:
             array (torch.tensor, H x W)
         """
 
         array = np.int64(array) if array.dtype != np.int64 else array.copy()
+        array = torch.from_numpy(array)
 
-        return torch.from_numpy(array)
-
-
+        return array

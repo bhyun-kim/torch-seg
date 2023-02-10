@@ -1,4 +1,4 @@
-ROOT_DIR = '/home/user/server/05. Data/00. Benchmarks/01. cityscapes'
+ROOT_DIR = '/home/user/바탕화면/01. cityscapes'
 
 LOSS = dict(
     type='CrossEntropyLoss',
@@ -18,6 +18,7 @@ MODEL = dict(
         loss=LOSS,
         in_channels=256,
         num_classes=19,
+        kernel_size=3,
         pixelshuffle_factor=2,
         scale_factor=8,
         mode='bilinear'
@@ -103,7 +104,9 @@ RUNNER = dict(
     iteration=ITERATION, 
 )
 
-EVALUATION = dict(interval=10, metric='mIoU')
-CHECKPOINT = dict(interval=10 )
-LOGGER = dict(interval=1)
-WORK_DIR = '/home/user/server/05. Data/03. Checkpoints/2023.02.09 CGNET_pixelshuffle'
+LOAD_FROM = None
+RESUME_FROM = None
+EVALUATION = dict(interval=4000, metric='miou')
+LOGGER = dict(interval=10)
+WORK_DIR = '/home/user/server/05. Data/03. Checkpoints/2023.02.10 CGNET_pixelshuffle_kernel_size_3'
+CHECKPOINT = dict(interval=4000, work_dir=WORK_DIR)

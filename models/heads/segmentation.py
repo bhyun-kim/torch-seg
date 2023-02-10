@@ -30,8 +30,14 @@ class Interpolate(nn.Module):
         """
         super().__init__()
 
+        padding = int((kernel_size - 1) / 2)
+
         self.conv = nn.Conv2d(
-            in_channels, num_classes, (kernel_size, kernel_size), bias=False)
+            in_channels,
+            num_classes, 
+            (kernel_size, kernel_size),
+            padding= padding,
+            bias=False)
 
         self.args_interpolate = dict(
             size=size,
@@ -97,10 +103,13 @@ class PixelShuffle(nn.Module):
 
         self.pixel_shuffle = nn.PixelShuffle(upscale_factor=pixelshuffle_factor)
 
+        padding = int((kernel_size - 1) / 2)
+
         self.conv = nn.Conv2d(
             in_channels // (pixelshuffle_factor ** 2),
             num_classes, 
             (kernel_size, kernel_size), 
+            padding=padding,
             bias=False)
 
         self.args_interpolate = dict(
@@ -120,9 +129,12 @@ class PixelShuffle(nn.Module):
         return self.criterion(output, labels)
 
     def predict(self, input):
+        
         out = self.pixel_shuffle(input)
         out = self.conv(out)
-        return F.interpolate(input=out, **self.args_interpolate)
+        out = F.interpolate(input=out, **self.args_interpolate)
+
+        return out 
 
 
     def initialize_layers(self):

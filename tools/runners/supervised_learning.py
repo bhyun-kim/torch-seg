@@ -113,7 +113,7 @@ class SupervisedLearner(object):
                 
                     pred = torch.argmax(pred, dim=1)
                     num_correct = torch.sum(pred == labels)
-                    train_acc = num_correct / len(pred)
+                    train_acc = num_correct / len(pred.flatten())
 
                     epoch = i // len(data_loaders['train']) + 1
 
@@ -122,9 +122,13 @@ class SupervisedLearner(object):
                     running_loss = 0. 
 
                 if i % eval_cfg['interval'] == eval_cfg['interval']-1:
-                    # print(f'iteration {i} rank {rank} You are here 8')
+                    
+                    if is_dist :
+                        eval_model = model.module
+                    else: 
+                        eval_model = model
                     evaluate(
-                        model.module, 
+                        eval_model, 
                         data_loaders['val'], 
                         device, 
                         logger=logger,
@@ -162,8 +166,8 @@ class SupervisedLearner(object):
 
             # print(f'rank {rank} You are here 11')
             
-
-            torch.distributed.barrier()
+            if is_dist: 
+                torch.distributed.barrier()
             # print(f'rank {rank} You are here 12')
 
             i += 1

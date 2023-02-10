@@ -23,7 +23,7 @@ class ModelFramer(nn.Module):
         if self.decoder: 
             feat = self.decoder(feat)
 
-        if labels != None:
+        if labels is not None:
             feat = self.head(feat, labels) 
         else: 
             feat = self.head.predict(feat) 
